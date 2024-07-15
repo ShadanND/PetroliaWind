@@ -9,13 +9,21 @@ import cartopy.feature as cfeature
 file_path = 'concatenated_wind_data_42.872028_-82.120731.csv'
 
 # Load the data
-df = pd.read_csv(file_path)
+try:
+    df = pd.read_csv(file_path)
+except FileNotFoundError:
+    st.error("The file was not found. Please check the file path.")
+    st.stop()
 
 # Assuming the column names are 'time', 'wind_speed', and 'wind_direction'
-df['time'] = pd.to_datetime(df['time'])
-df['Hour'] = df['time'].dt.hour
-df['Month'] = df['time'].dt.month
-df['Year'] = df['time'].dt.year
+try:
+    df['time'] = pd.to_datetime(df['time'])
+    df['Hour'] = df['time'].dt.hour
+    df['Month'] = df['time'].dt.month
+    df['Year'] = df['time'].dt.year
+except KeyError:
+    st.error("The expected columns 'time', 'wind_speed', and 'wind_direction' are not found in the dataset.")
+    st.stop()
 
 # Categorize time of day
 time_bins = [0, 6, 12, 18, 24]
@@ -44,32 +52,19 @@ selected_data = st.multiselect(
     default=['Wind Speed', 'Wind Direction']
 )
 
-fig = go.Figure()
+fig = plt.figure()
 
 # Plot selected data as scatter plots
 if 'Wind Speed' in selected_data:
-    fig.add_trace(go.Scatter(x=df['time'], y=df['wind_speed'], mode='markers', name='Wind Speed',
-                             marker=dict(color='blue')))
+    plt.scatter(df['time'], df['wind_speed'], label='Wind Speed', color='blue')
 if 'Wind Direction' in selected_data:
-    fig.add_trace(go.Scatter(x=df['time'], y=df['wind_direction'], mode='markers', name='Wind Direction',
-                             yaxis='y2', marker=dict(color='red')))
+    plt.scatter(df['time'], df['wind_direction'], label='Wind Direction', color='red')
 
-# Update layout to include secondary y-axis if Wind Direction is selected
-if 'Wind Direction' in selected_data:
-    fig.update_layout(
-        yaxis2=dict(
-            title='Wind Direction (degrees)',
-            overlaying='y',
-            side='right'
-        )
-    )
-
-fig.update_layout(
-    title='Wind Speed and Direction over Time',
-    xaxis_title='Time',
-    yaxis_title='Wind Speed (m/s)'
-)
-st.plotly_chart(fig)
+plt.title('Wind Speed and Direction over Time')
+plt.xlabel('Time')
+plt.ylabel('Wind Speed (m/s) / Wind Direction (degrees)')
+plt.legend()
+st.pyplot(fig)
 
 # Wind Rose Plot
 st.subheader("Wind Rose Plot by Time of Day")
@@ -87,28 +82,19 @@ time_colors = {
 angles = np.radians(avg_data['Average Wind Direction (degrees)'])
 wind_speed = avg_data['Average Wind Speed (m/s)']
 
-wind_rose_fig = go.Figure()
+fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
 for i, label in enumerate(time_labels):
-    opacity = 1.0 if label == selected_time else 0.5
-    wind_rose_fig.add_trace(go.Scatterpolar(
-        r=[0, wind_speed[i]],
-        theta=[0, avg_data['Average Wind Direction (degrees)'][i]],
-        mode='lines+markers+text',
-        text=[label, label],
-        textposition='top center',
-        opacity=opacity,
-        name=label,
-        line=dict(color=time_colors[label]),
-        marker=dict(color=time_colors[label])
-    ))
-wind_rose_fig.update_layout(
-    title='Wind Direction Shift by Time of Day',
-    polar=dict(
-        radialaxis=dict(visible=True, range=[0, max(wind_speed)]),
-        angularaxis=dict(rotation=90, direction='clockwise', tickvals=[0, 90, 180, 270], ticktext=['N', 'E', 'S', 'W'])
-    )
-)
-st.plotly_chart(wind_rose_fig)
+    theta = np.deg2rad(avg_data.loc[avg_data['Time Category'] == label, 'Average Wind Direction (degrees)'])
+    r = avg_data.loc[avg_data['Time Category'] == label, 'Average Wind Speed (m/s)']
+    ax.plot(theta, r, 'o-', label=label, color=time_colors[label])
+    ax.fill(theta, r, alpha=0.3, color=time_colors[label])
+
+ax.set_theta_direction(-1)
+ax.set_theta_offset(np.pi / 2.0)
+ax.set_rlabel_position(-22.5)
+plt.legend(loc='upper right')
+plt.title('Wind Rose Plot by Time of Day')
+st.pyplot(fig)
 
 # Highlight Downwind Area for Selected Time on Map
 st.subheader("Highlight Downwind Area for Selected Time on Map")
