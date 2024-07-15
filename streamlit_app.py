@@ -1,28 +1,19 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import folium
-from streamlit_folium import st_folium
+import plotly.graph_objects as go
 
 # File path (ensure the path to your CSV is correct if you're uploading it)
 file_path = 'concatenated_wind_data_42.872028_-82.120731.csv'
 
 # Load the data
-try:
-    df = pd.read_csv(file_path)
-except FileNotFoundError:
-    st.error("The file was not found. Please check the file path.")
-    st.stop()
+df = pd.read_csv(file_path)
 
 # Assuming the column names are 'time', 'wind_speed', and 'wind_direction'
-try:
-    df['time'] = pd.to_datetime(df['time'])
-    df['Hour'] = df['time'].dt.hour
-    df['Month'] = df['time'].dt.month
-    df['Year'] = df['time'].dt.year
-except KeyError:
-    st.error("The expected columns 'time', 'wind_speed', and 'wind_direction' are not found in the dataset.")
-    st.stop()
+df['time'] = pd.to_datetime(df['time'])
+df['Hour'] = df['time'].dt.hour
+df['Month'] = df['time'].dt.month
+df['Year'] = df['time'].dt.year
 
 # Categorize time of day
 time_bins = [0, 6, 12, 18, 24]
@@ -117,8 +108,8 @@ wind_rose_fig.update_layout(
 )
 st.plotly_chart(wind_rose_fig)
 
-# Highlight Downwind Area for Selected Time on Map
-st.subheader("Highlight Downwind Area for Selected Time on Map")
+# Highlight Downwind Area for Selected Time
+st.subheader("Highlight Downwind Area for Selected Time")
 
 # Get the downwind direction and add uncertainty range for the selected time
 selected_wind_direction = avg_data.loc[avg_data['Time Category'] == selected_time, 'Average Wind Direction (degrees)'].values[0]
@@ -127,28 +118,29 @@ downwind_direction = (selected_wind_direction + 180) % 360
 downwind_sector_start = (downwind_direction - uncertainty_range) % 360
 downwind_sector_end = (downwind_direction + uncertainty_range) % 360
 
-# Coordinates of the location
-lat, lon = 42.872028, -82.120731
+downwind_fig = go.Figure()
 
-# Create map with folium
-m = folium.Map(location=[lat, lon], zoom_start=10)
+# Plot filled sector to show the downwind area with uncertainty
+theta_start = downwind_sector_start
+theta_end = downwind_sector_end
 
-# Add the measurement point
-folium.Marker([lat, lon], popup="Wind Measurement Point").add_to(m)
+downwind_fig.add_trace(go.Scatterpolar(
+    r=[0, 1, 1, 0],
+    theta=[theta_start, theta_start, theta_end, theta_end],
+    fill='toself',
+    fillcolor='rgba(255, 0, 0, 0.3)',
+    line=dict(color='rgba(255, 0, 0, 0.3)')
+))
 
-# Calculate points for the downwind area
-points = []
-angles = np.linspace(downwind_sector_start, downwind_sector_end, 100)
-for angle in angles:
-    end_lat = lat + (0.1 * np.cos(np.radians(angle)))
-    end_lon = lon + (0.1 * np.sin(np.radians(angle)))
-    points.append([end_lat, end_lon])
+downwind_fig.update_layout(
+    title=f'Downwind Area with Uncertainty for {selected_time}',
+    polar=dict(
+        radialaxis=dict(visible=True, range=[0, 1]),
+        angularaxis=dict(rotation=90, direction='clockwise', tickvals=[0, 90, 180, 270], ticktext=['N', 'E', 'S', 'W'])
+    )
+)
 
-# Add polygon to map
-folium.Polygon(locations=points, color='red', fill=True, fill_opacity=0.3).add_to(m)
-
-# Display map in Streamlit
-st_folium(m, width=700, height=500)
+st.plotly_chart(downwind_fig)
 
 # Summary Table
 st.subheader("Summary Table of Average Wind Direction and Speed")
