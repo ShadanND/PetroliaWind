@@ -29,7 +29,7 @@ avg_data = pd.merge(avg_wind_direction, avg_wind_speed, on='Time Category')
 avg_data.columns = ['Time Category', 'Average Wind Direction (degrees)', 'Average Wind Speed (m/s)']
 
 # Define uncertainty range (in degrees)
-uncertainty_range = 40
+uncertainty_range = 30
 
 # Title
 st.title("Wind Data Dashboard")
@@ -108,15 +108,15 @@ wind_rose_fig.update_layout(
 )
 st.plotly_chart(wind_rose_fig)
 
-# Highlight Overall Downwind Area with Uncertainty
-st.subheader("Highlight Overall Downwind Area with Uncertainty")
+# Highlight Downwind Area for Selected Time
+st.subheader("Highlight Downwind Area for Selected Time")
 
-# Calculate overall downwind direction and add uncertainty range
-overall_downwind_angles = avg_data['Average Wind Direction (degrees)'] + 180
-overall_downwind_angles = overall_downwind_angles % 360
+# Get the downwind direction and add uncertainty range for the selected time
+selected_wind_direction = avg_data.loc[avg_data['Time Category'] == selected_time, 'Average Wind Direction (degrees)'].values[0]
+downwind_direction = (selected_wind_direction + 180) % 360
 
-downwind_sector_start = (overall_downwind_angles - uncertainty_range).min()
-downwind_sector_end = (overall_downwind_angles + uncertainty_range).max()
+downwind_sector_start = (downwind_direction - uncertainty_range) % 360
+downwind_sector_end = (downwind_direction + uncertainty_range) % 360
 
 downwind_fig = go.Figure()
 
@@ -133,7 +133,7 @@ downwind_fig.add_trace(go.Scatterpolar(
 ))
 
 downwind_fig.update_layout(
-    title='Overall Downwind Area with Uncertainty (Early Morning to Evening)',
+    title=f'Downwind Area with Uncertainty for {selected_time}',
     polar=dict(
         radialaxis=dict(visible=True, range=[0, 1]),
         angularaxis=dict(rotation=90, direction='clockwise', tickvals=[0, 90, 180, 270], ticktext=['N', 'E', 'S', 'W'])
