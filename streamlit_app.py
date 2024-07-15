@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 
 # File path (ensure the path to your CSV is correct if you're uploading it)
 file_path = 'concatenated_wind_data_42.872028_-82.120731.csv'
@@ -29,7 +31,7 @@ avg_data = pd.merge(avg_wind_direction, avg_wind_speed, on='Time Category')
 avg_data.columns = ['Time Category', 'Average Wind Direction (degrees)', 'Average Wind Speed (m/s)']
 
 # Define uncertainty range (in degrees)
-uncertainty_range = 30
+uncertainty_range = 15
 
 # Title
 st.title("Wind Data Dashboard")
@@ -108,8 +110,8 @@ wind_rose_fig.update_layout(
 )
 st.plotly_chart(wind_rose_fig)
 
-# Highlight Downwind Area for Selected Time
-st.subheader("Highlight Downwind Area for Selected Time")
+# Highlight Downwind Area for Selected Time on Map
+st.subheader("Highlight Downwind Area for Selected Time on Map")
 
 # Get the downwind direction and add uncertainty range for the selected time
 selected_wind_direction = avg_data.loc[avg_data['Time Category'] == selected_time, 'Average Wind Direction (degrees)'].values[0]
@@ -118,29 +120,36 @@ downwind_direction = (selected_wind_direction + 180) % 360
 downwind_sector_start = (downwind_direction - uncertainty_range) % 360
 downwind_sector_end = (downwind_direction + uncertainty_range) % 360
 
-downwind_fig = go.Figure()
+# Coordinates of the location
+lat, lon = 42.872028, -82.120731
 
-# Plot filled sector to show the downwind area with uncertainty
-theta_start = downwind_sector_start
-theta_end = downwind_sector_end
+# Create map with downwind area using cartopy
+fig, ax = plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()})
+ax.set_extent([lon-5, lon+5, lat-5, lat+5], crs=ccrs.PlateCarree())
 
-downwind_fig.add_trace(go.Scatterpolar(
-    r=[0, 1, 1, 0],
-    theta=[theta_start, theta_start, theta_end, theta_end],
-    fill='toself',
-    fillcolor='rgba(255, 0, 0, 0.3)',
-    line=dict(color='rgba(255, 0, 0, 0.3)')
-))
+# Add geographic features
+ax.add_feature(cfeature.LAND)
+ax.add_feature(cfeature.OCEAN)
+ax.add_feature(cfeature.COASTLINE)
+ax.add_feature(cfeature.BORDERS, linestyle=':')
+ax.add_feature(cfeature.LAKES, alpha=0.5)
+ax.add_feature(cfeature.RIVERS)
 
-downwind_fig.update_layout(
-    title=f'Downwind Area with Uncertainty for {selected_time}',
-    polar=dict(
-        radialaxis=dict(visible=True, range=[0, 1]),
-        angularaxis=dict(rotation=90, direction='clockwise', tickvals=[0, 90, 180, 270], ticktext=['N', 'E', 'S', 'W'])
-    )
-)
+# Plot the wind measurement point
+ax.plot(lon, lat, 'ro', markersize=10, transform=ccrs.PlateCarree())
 
-st.plotly_chart(downwind_fig)
+# Plot the downwind area with uncertainty
+angles = np.linspace(downwind_sector_start, downwind_sector_end, 100)
+for angle in angles:
+    end_lat = lat + np.cos(np.radians(angle))
+    end_lon = lon + np.sin(np.radians(angle))
+    ax.plot([lon, end_lon], [lat, end_lat], color='red', alpha=0.3, transform=ccrs.PlateCarree())
+
+# Add title
+plt.title(f'Downwind Area with Uncertainty for {selected_time}')
+
+# Display the plot using Streamlit
+st.pyplot(fig)
 
 # Summary Table
 st.subheader("Summary Table of Average Wind Direction and Speed")
