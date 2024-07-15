@@ -72,6 +72,14 @@ st.subheader("Wind Rose Plot by Time of Day")
 
 selected_time = st.selectbox("Select Time of Day", time_labels)
 
+# Define colors for each time category
+time_colors = {
+    'Early Morning': 'blue',
+    'Morning': 'green',
+    'Afternoon': 'orange',
+    'Evening': 'red'
+}
+
 angles = np.radians(avg_data['Average Wind Direction (degrees)'])
 wind_speed = avg_data['Average Wind Speed (m/s)']
 
@@ -85,7 +93,9 @@ for i, label in enumerate(time_labels):
         text=[label, label],
         textposition='top center',
         opacity=opacity,
-        name=label
+        name=label,
+        line=dict(color=time_colors[label]),
+        marker=dict(color=time_colors[label])
     ))
 wind_rose_fig.update_layout(
     title='Wind Direction Shift by Time of Day',
