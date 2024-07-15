@@ -4,8 +4,8 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 
-# File path
-file_path = r'D:\CurrentWorks\windPetrolia\2024_Round2\All_4Points\Windroses\concatenated_wind_data_42.872028_-82.120731.csv'
+# File path (ensure the path to your CSV is correct if you're uploading it)
+file_path = 'concatenated_wind_data_42.872028_-82.120731.csv'
 
 # Load the data
 df = pd.read_csv(file_path)
