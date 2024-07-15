@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import cartopy.crs as ccrs
-import cartopy.feature as cfeature
+import folium
+from streamlit_folium import st_folium
 
 # File path (ensure the path to your CSV is correct if you're uploading it)
 file_path = 'concatenated_wind_data_42.872028_-82.120731.csv'
@@ -52,19 +51,32 @@ selected_data = st.multiselect(
     default=['Wind Speed', 'Wind Direction']
 )
 
-fig = plt.figure()
+fig = go.Figure()
 
 # Plot selected data as scatter plots
 if 'Wind Speed' in selected_data:
-    plt.scatter(df['time'], df['wind_speed'], label='Wind Speed', color='blue')
+    fig.add_trace(go.Scatter(x=df['time'], y=df['wind_speed'], mode='markers', name='Wind Speed',
+                             marker=dict(color='blue')))
 if 'Wind Direction' in selected_data:
-    plt.scatter(df['time'], df['wind_direction'], label='Wind Direction', color='red')
+    fig.add_trace(go.Scatter(x=df['time'], y=df['wind_direction'], mode='markers', name='Wind Direction',
+                             yaxis='y2', marker=dict(color='red')))
 
-plt.title('Wind Speed and Direction over Time')
-plt.xlabel('Time')
-plt.ylabel('Wind Speed (m/s) / Wind Direction (degrees)')
-plt.legend()
-st.pyplot(fig)
+# Update layout to include secondary y-axis if Wind Direction is selected
+if 'Wind Direction' in selected_data:
+    fig.update_layout(
+        yaxis2=dict(
+            title='Wind Direction (degrees)',
+            overlaying='y',
+            side='right'
+        )
+    )
+
+fig.update_layout(
+    title='Wind Speed and Direction over Time',
+    xaxis_title='Time',
+    yaxis_title='Wind Speed (m/s)'
+)
+st.plotly_chart(fig)
 
 # Wind Rose Plot
 st.subheader("Wind Rose Plot by Time of Day")
@@ -82,19 +94,28 @@ time_colors = {
 angles = np.radians(avg_data['Average Wind Direction (degrees)'])
 wind_speed = avg_data['Average Wind Speed (m/s)']
 
-fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+wind_rose_fig = go.Figure()
 for i, label in enumerate(time_labels):
-    theta = np.deg2rad(avg_data.loc[avg_data['Time Category'] == label, 'Average Wind Direction (degrees)'])
-    r = avg_data.loc[avg_data['Time Category'] == label, 'Average Wind Speed (m/s)']
-    ax.plot(theta, r, 'o-', label=label, color=time_colors[label])
-    ax.fill(theta, r, alpha=0.3, color=time_colors[label])
-
-ax.set_theta_direction(-1)
-ax.set_theta_offset(np.pi / 2.0)
-ax.set_rlabel_position(-22.5)
-plt.legend(loc='upper right')
-plt.title('Wind Rose Plot by Time of Day')
-st.pyplot(fig)
+    opacity = 1.0 if label == selected_time else 0.5
+    wind_rose_fig.add_trace(go.Scatterpolar(
+        r=[0, wind_speed[i]],
+        theta=[0, avg_data['Average Wind Direction (degrees)'][i]],
+        mode='lines+markers+text',
+        text=[label, label],
+        textposition='top center',
+        opacity=opacity,
+        name=label,
+        line=dict(color=time_colors[label]),
+        marker=dict(color=time_colors[label])
+    ))
+wind_rose_fig.update_layout(
+    title='Wind Direction Shift by Time of Day',
+    polar=dict(
+        radialaxis=dict(visible=True, range=[0, max(wind_speed)]),
+        angularaxis=dict(rotation=90, direction='clockwise', tickvals=[0, 90, 180, 270], ticktext=['N', 'E', 'S', 'W'])
+    )
+)
+st.plotly_chart(wind_rose_fig)
 
 # Highlight Downwind Area for Selected Time on Map
 st.subheader("Highlight Downwind Area for Selected Time on Map")
@@ -109,33 +130,25 @@ downwind_sector_end = (downwind_direction + uncertainty_range) % 360
 # Coordinates of the location
 lat, lon = 42.872028, -82.120731
 
-# Create map with downwind area using cartopy
-fig, ax = plt.subplots(subplot_kw={'projection': ccrs.PlateCarree()})
-ax.set_extent([lon-5, lon+5, lat-5, lat+5], crs=ccrs.PlateCarree())
+# Create map with folium
+m = folium.Map(location=[lat, lon], zoom_start=10)
 
-# Add geographic features
-ax.add_feature(cfeature.LAND)
-ax.add_feature(cfeature.OCEAN)
-ax.add_feature(cfeature.COASTLINE)
-ax.add_feature(cfeature.BORDERS, linestyle=':')
-ax.add_feature(cfeature.LAKES, alpha=0.5)
-ax.add_feature(cfeature.RIVERS)
+# Add the measurement point
+folium.Marker([lat, lon], popup="Wind Measurement Point").add_to(m)
 
-# Plot the wind measurement point
-ax.plot(lon, lat, 'ro', markersize=10, transform=ccrs.PlateCarree())
-
-# Plot the downwind area with uncertainty
+# Calculate points for the downwind area
+points = []
 angles = np.linspace(downwind_sector_start, downwind_sector_end, 100)
 for angle in angles:
-    end_lat = lat + np.cos(np.radians(angle))
-    end_lon = lon + np.sin(np.radians(angle))
-    ax.plot([lon, end_lon], [lat, end_lat], color='red', alpha=0.3, transform=ccrs.PlateCarree())
+    end_lat = lat + (0.1 * np.cos(np.radians(angle)))
+    end_lon = lon + (0.1 * np.sin(np.radians(angle)))
+    points.append([end_lat, end_lon])
 
-# Add title
-plt.title(f'Downwind Area with Uncertainty for {selected_time}')
+# Add polygon to map
+folium.Polygon(locations=points, color='red', fill=True, fill_opacity=0.3).add_to(m)
 
-# Display the plot using Streamlit
-st.pyplot(fig)
+# Display map in Streamlit
+st_folium(m, width=700, height=500)
 
 # Summary Table
 st.subheader("Summary Table of Average Wind Direction and Speed")
