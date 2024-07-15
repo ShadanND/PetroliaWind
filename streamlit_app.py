@@ -29,7 +29,7 @@ avg_data = pd.merge(avg_wind_direction, avg_wind_speed, on='Time Category')
 avg_data.columns = ['Time Category', 'Average Wind Direction (degrees)', 'Average Wind Speed (m/s)']
 
 # Define uncertainty range (in degrees)
-uncertainty_range = 15
+uncertainty_range = 45
 
 # Title
 st.title("Wind Data Dashboard")
