@@ -109,8 +109,11 @@ st.plotly_chart(wind_rose_fig)
 st.subheader("Highlight Overall Downwind Area")
 
 # Calculate overall downwind direction
-downwind_sector_start = avg_data['Average Wind Direction (degrees)'].min()
-downwind_sector_end = avg_data['Average Wind Direction (degrees)'].max()
+overall_downwind_angles = avg_data['Average Wind Direction (degrees)'] + 180
+overall_downwind_angles = overall_downwind_angles % 360
+
+downwind_sector_start = overall_downwind_angles.min()
+downwind_sector_end = overall_downwind_angles.max()
 
 downwind_fig = go.Figure()
 
