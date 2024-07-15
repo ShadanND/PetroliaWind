@@ -2,5 +2,5 @@ pandas
 numpy
 plotly
 streamlit
-cartopy
-matplotlib
+folium
+streamlit_folium
