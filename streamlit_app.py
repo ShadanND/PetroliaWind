@@ -105,33 +105,31 @@ wind_rose_fig.update_layout(
 )
 st.plotly_chart(wind_rose_fig)
 
-# Highlight Downwind Area
-st.subheader("Highlight Downwind Area")
+# Highlight Overall Downwind Area
+st.subheader("Highlight Overall Downwind Area")
 
-selected_time_for_downwind = st.selectbox("Select Time of Day for Downwind Area", time_labels, key='downwind')
+# Calculate overall downwind direction
+overall_downwind_angles = np.radians(avg_data['Average Wind Direction (degrees)'])
+overall_downwind_sector_start = np.min(overall_downwind_angles)
+overall_downwind_sector_end = np.max(overall_downwind_angles)
 
-downwind_angle = avg_data.loc[avg_data['Time Category'] == selected_time_for_downwind, 'Average Wind Direction (degrees)'].values[0]
-downwind_angle_rad = np.radians(downwind_angle)
-
-# Plotting Downwind Area
 downwind_fig = go.Figure()
 
-downwind_fig.add_trace(go.Scatterpolar(
-    r=[0, 1],
-    theta=[downwind_angle, downwind_angle],
-    mode='lines',
-    line=dict(color='red', width=3)
-))
-
-downwind_fig.add_trace(go.Scatterpolar(
-    r=[0, 1],
-    theta=[(downwind_angle + 180) % 360, (downwind_angle + 180) % 360],
-    mode='lines',
-    line=dict(color='blue', width=3)
-))
+# Plot filled sectors
+for i, label in enumerate(time_labels):
+    theta_start = np.degrees(overall_downwind_sector_start)
+    theta_end = np.degrees(overall_downwind_sector_end)
+    wind_rose_fig.add_trace(go.Scatterpolar(
+        r=[0, 1, 1, 0],
+        theta=[theta_start, theta_start, theta_end, theta_end],
+        fill='toself',
+        fillcolor='rgba(255, 0, 0, 0.3)',
+        opacity=0.5,
+        line=dict(color='rgba(255, 0, 0, 0.0)')
+    ))
 
 downwind_fig.update_layout(
-    title=f'Downwind Area for {selected_time_for_downwind}',
+    title='Overall Downwind Area (Early Morning to Evening)',
     polar=dict(
         radialaxis=dict(visible=True, range=[0, 1]),
         angularaxis=dict(rotation=90, direction='clockwise', tickvals=[0, 90, 180, 270], ticktext=['N', 'E', 'S', 'W'])
