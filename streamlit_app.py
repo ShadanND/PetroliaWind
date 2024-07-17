@@ -9,11 +9,18 @@ file_path = 'concatenated_wind_data_42.872028_-82.120731.csv'
 # Load the data
 try:
     df = pd.read_csv(file_path)
+    st.success("File loaded successfully!")
 except FileNotFoundError:
     st.error(f"File not found: {file_path}")
     st.stop()
 except Exception as e:
     st.error(f"Error loading file: {e}")
+    st.stop()
+
+# Ensure df is loaded and contains the required columns
+required_columns = ['time', 'wind_speed', 'wind_direction']
+if not all(column in df.columns for column in required_columns):
+    st.error(f"Missing required columns in the dataset. Required columns: {required_columns}")
     st.stop()
 
 # Assuming the column names are 'time', 'wind_speed', and 'wind_direction'
