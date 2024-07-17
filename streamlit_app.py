@@ -1,4 +1,4 @@
-import streamlit as st
+ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -7,44 +7,26 @@ import plotly.graph_objects as go
 file_path = 'concatenated_wind_data_42.872028_-82.120731.csv'
 
 # Load the data
-try:
-    df = pd.read_csv(file_path)
-    st.success("File loaded successfully!")
-except FileNotFoundError:
-    st.error(f"File not found: {file_path}")
-    st.stop()
-except Exception as e:
-    st.error(f"Error loading file: {e}")
-    st.stop()
-
-# Ensure df is loaded and contains the required columns
-required_columns = ['time', 'wind_speed', 'wind_direction']
-if not all(column in df.columns for column in required_columns):
-    st.error(f"Missing required columns in the dataset. Required columns: {required_columns}")
-    st.stop()
+df = pd.read_csv(file_path)
 
 # Assuming the column names are 'time', 'wind_speed', and 'wind_direction'
-try:
-    df['time'] = pd.to_datetime(df['time'])
-    df['Hour'] = df['time'].dt.hour
-    df['Month'] = df['time'].dt.month
-    df['Year'] = df['time'].dt.year
+df['time'] = pd.to_datetime(df['time'])
+df['Hour'] = df['time'].dt.hour
+df['Month'] = df['time'].dt.month
+df['Year'] = df['time'].dt.year
 
-    # Categorize time of day
-    time_bins = [0, 6, 12, 18, 24]
-    time_labels = ['Early Morning', 'Morning', 'Afternoon', 'Evening']
-    df['Time Category'] = pd.cut(df['Hour'], bins=time_bins, labels=time_labels, right=False)
+# Categorize time of day
+time_bins = [0, 6, 12, 18, 24]
+time_labels = ['Early Morning', 'Morning', 'Afternoon', 'Evening']
+df['Time Category'] = pd.cut(df['Hour'], bins=time_bins, labels=time_labels, right=False)
 
-    # Calculate averages
-    avg_wind_direction = df.groupby('Time Category')['wind_direction'].mean().reset_index()
-    avg_wind_speed = df.groupby('Time Category')['wind_speed'].mean().reset_index()
+# Calculate averages
+avg_wind_direction = df.groupby('Time Category')['wind_direction'].mean().reset_index()
+avg_wind_speed = df.groupby('Time Category')['wind_speed'].mean().reset_index()
 
-    # Merge the average wind direction and speed into one DataFrame
-    avg_data = pd.merge(avg_wind_direction, avg_wind_speed, on='Time Category')
-    avg_data.columns = ['Time Category', 'Average Wind Direction (degrees)', 'Average Wind Speed (m/s)']
-except Exception as e:
-    st.error(f"Error processing data: {e}")
-    st.stop()
+# Merge the average wind direction and speed into one DataFrame
+avg_data = pd.merge(avg_wind_direction, avg_wind_speed, on='Time Category')
+avg_data.columns = ['Time Category', 'Average Wind Direction (degrees)', 'Average Wind Speed (m/s)']
 
 # Define uncertainty range (in degrees)
 uncertainty_range = 15
